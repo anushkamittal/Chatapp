@@ -1,0 +1,33 @@
+{
+  "name": "my-app",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "axios": "^0.18.0",
+    "babel-loader": "^7.1.5",
+    "bson-objectid": "^1.2.3",
+    "classnames": "^2.2.6",
+    "css-loader": "^1.0.0",
+    "extract-text-webpack-plugin": "^3.0.2",
+    "file-loader": "^2.0.0",
+    "immutable": "^3.8.2",
+    "lodash": "^4.17.10",
+    "moment": "^2.22.2",
+    "node-sass-watcher": "^0.5.1",
+    "react": "^16.4.2",
+    "react-dom": "^16.4.2",
+    "react-fa": "^5.0.0",
+    "react-md": "^1.5.0",
+    "react-md-icon": "^1.13.0",
+    "react-scripts": "1.1.4",
+    "style-loader": "^0.22.1",
+    "url-loader": "^1.1.1",
+    "webpack": "^3.11.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  }
+}
