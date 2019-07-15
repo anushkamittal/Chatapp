@@ -1,43 +1,52 @@
-import React ,{Component} from 'react';
-import _ from 'lodash';
+import React, {Component} from 'react'
+import _ from 'lodash'
 
 export default class SearchUser extends Component{
 
-    constructor(props){
-        super(props);
 
-        this.handleClick = this.handleClick.bind(this);
-    }
+	constructor(props){
+		super(props);
 
-    handleClick(user){
 
-        if(this.props.onSelect){
-            this.props.onSelect(user);
-        }
-    }
+		this.handleOnClick = this.handleOnClick.bind(this);
 
-    render(){
 
-        const {store , search} = this.props;
-        const Users = store.SearchUsers(search);
+	}
 
-        return(
-            <div className='search-user'>
-            
-                <div className='user-list'>
-            
-                   {Users.map((user,index)=>{
 
-                        return <div key={index} onClick={()=>this.handleClick(user)} className='user'>
-                        <img src={_.get(user,'avatar')} alt='...' />
-                        <h2>{_.get(user,'name')}</h2>
-                        </div>
+	handleOnClick(user){
 
-                   })}
 
-                     
-                </div>
-            </div>
-        )
-    }
+		if(this.props.onSelect){
+			this.props.onSelect(user);
+		}
+	}
+	render(){
+
+		const {store} = this.props;
+
+		
+		const users = store.getSearchUsers();
+
+
+
+
+		return <div className="search-user">
+
+			<div className="user-list">
+
+			{users.map((user, index) => {
+
+				return (<div onClick={() => this.handleOnClick(user)} key={index} className="user">
+					<img src={_.get(user, 'avatar')} alt="..." />
+					<h2>{_.get(user, 'name')}</h2>
+				</div>)
+
+			})}
+				
+				
+
+			</div>
+		</div>
+	}
 }

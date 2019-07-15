@@ -1,61 +1,68 @@
-import React ,{Component} from 'react';
-
-export default class Usermenu extends Component {
-
-    constructor(props){
-        super(props);
-
-        this.onClickOutside = this.onClickOutside.bind(this);
-    }
-
-    onClickOutside(event){
-
-        if(this.ref && !this.ref.contains(event.target)){
-
-            console.log('You did click outside of login form');
-
-            if(this.props.onClose){
-                this.props.onClose();
-            }
-        }
+import React,{Component} from 'react'
 
 
-    }
+export default class UserMenu extends Component{
 
-    componentDidMount(){
-
-        window.addEventListener('mousedown',this.onClickOutside);
-    }
-
-    componentWillUnmount(){
-
-        window.removeEventListener('mousedown',this.onClickOutside);
-    }
-
-    render(){
-
-        const {store} = this.props;
+	constructor(props){
+		super(props);
 
 
-        return(
-            <div className='user-menu' ref={ref => this.ref = ref}>
-                <h2>My Menu</h2>
-                <ul className='menu'>
-                
-                    <li><button type='button'>My Profile</button></li>
-                    <li><button type='button'>Change Password</button></li>
-                    <li><button onClick={()=>{
 
+		this.onClickOutside = this.onClickOutside.bind(this);
+
+
+
+	}
+
+
+	onClickOutside(event){
+
+		if(this.ref && !this.ref.contains(event.target)){
+
+	
+			if(this.props.onClose){
+				this.props.onClose();
+			}
+
+		}
+	}
+
+	componentDidMount(){
+
+		window.addEventListener('mousedown', this.onClickOutside);
+
+	}
+	componentWillUnmount(){
+
+		window.removeEventListener('mousedown', this.onClickOutside);
+
+	}
+
+
+
+	render(){
+
+		const {store} = this.props;
+
+		const user = store.getCurrentUser();
+
+		return <div className="user-menu" ref={(ref) => this.ref = ref}>
+			{user ? <div>
+
+                <h2>My menu</h2>
+                <ul className="menu">
+                    <li><button onClick={() => {
                         if(this.props.onClose){
                             this.props.onClose();
                         }
-                        store.signOut();
-                    }
-                    } type='button'>Sign out</button></li>
 
+                        store.signOut();
+
+                    }} type="button">Sign Out</button></li>
                 </ul>
 
-            </div>
-        )
-    }
+				</div> : null }
+
+		</div>
+	}
 }
