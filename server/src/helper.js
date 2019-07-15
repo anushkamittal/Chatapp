@@ -1,17 +1,15 @@
-export const isEmail = (email) =>{
+export const isEmail = (emaill) => {
 
-    const re =/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-    return re.test(email);
+
+	const regex = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+
+	return regex.test(emaill);
 }
 
-export const toString = (id) =>{
+export const toString = (id = "") => {
 
-    const str = "" + `${id}`;
 
-    if(typeof id === 'string'){
-        
-        return id; 
-    }
+	return `${id}`;
+		
 
-    return str;
 }

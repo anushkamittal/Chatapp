@@ -1,293 +1,382 @@
-import _ from 'lodash';
-import {isEmail} from '../helper';
-import Promise from 'promise-polyfill';
-import {ObjectID} from 'mongodb';
-import bcrypt from 'bcrypt';
-import {OrderedMap} from 'immutable';
+import _ from 'lodash'
+import {isEmail} from '../helper'
+import bcrypt from 'bcrypt'
+import {ObjectID} from 'mongodb'
+import {OrderedMap} from 'immutable'
 
-const saltRounds =10;
+const saltRound = 10;
 
+export default class User {
 
-export default class User{
-
-    constructor(app){
+    constructor(app) {
 
         this.app = app;
+
         this.users = new OrderedMap();
 
     }
 
-    search( q = ""){
+    updateUserStatus(userId, isOnline = false) {
 
-        return new Promise((resolve,reject)=>{
+        return new Promise((resolve, reject) => {
 
-            const regex = new RegExp(q,'i');
-            const query = {
-                $or :[
-                    {name : {$regex : regex}},
-                    {email: {$regex : regex}}
-            ],
-            }
-    
-            this.app.db.db('chatapp').collection('users').find(query,{name:1,email:0}).toArray((err,result)=>{
-    
-                if(err || !result || !result.length){
-    
-                    return reject({message: "User not found"});
+            // first update status of cache this.users
+
+
+            this.users = this.users.update(userId, (user) => {
+
+                if (user) {
+                    user.online = isOnline;
                 }
 
-                return resolve(result);
-            })
+                return user;
+            });
+
+            const query = {_id: new ObjectID(userId)};
+            const updater = {$set: {online: isOnline}};
+            this.app.db.collection('users').update(query, updater, (err, info) => {
+                return err ? reject(err) : resolve(info);
+            });
+
 
         })
-
-       
     }
 
-    login(user){
+    find(query = {}, options = {}) {
 
-        const email = _.get(user,'email');
-        const password = _.get(user,'password');
 
-        return new Promise((resolve,reject)=>{
+        return new Promise((resolve, reject) => {
 
-            if(!email || !password || !isEmail(email)){
-                return reject({message:"An Error Login."});
+            this.app.db.collection('users').find(query, options).toArray((err, users) => {
+
+                return err ? reject(err) : resolve(users);
+            })
+
+        });
+    }
+
+    search(q = "") {
+
+        return new Promise((resolve, reject) => {
+
+
+            const regex = new RegExp(q, 'i');
+
+            const query = {
+                $or: [
+                    {name: {$regex: regex}},
+                    {email: {$regex: regex}},
+                ],
+            };
+
+            this.app.db.collection('users').find(query, {
+                _id: true,
+                name: true,
+                created: true
+            }).toArray((err, results) => {
+
+
+                if (err || !results || !results.length) {
+
+                    return reject({message: "User not found."})
+                }
+
+                return resolve(results);
+            });
+
+
+        });
+    }
+
+    login(user) {
+
+        const email = _.get(user, 'email', '');
+        const password = _.get(user, 'password', '');
+
+
+        return new Promise((resolve, reject) => {
+
+
+            if (!password || !email || !isEmail(email)) {
+                return reject({message: "An error login."})
             }
 
-            //now we find user in database
-            this.findUserByEmail(email,(err,result) =>{
 
-                if(err){
-                    return reject({message:"User not found"});
+            // find in database with email
+
+            this.findUserByEmail(email, (err, result) => {
+
+
+                if (err) {
+
+                    return reject({message: "Login Error."});
                 }
 
-                //if user found we have to compare password and plain text.
 
-                const hashpassword = _.get(result,'password');
-                const isMatch = bcrypt.compareSync(password,hashpassword);
+                // if found user we have to compare the password hash and plain text.
 
-                if(!isMatch){
-                    return reject({message:"Login Error"});
+
+                const hashPassword = _.get(result, 'password');
+
+                const isMatch = bcrypt.compareSync(password, hashPassword);
+
+
+                if (!isMatch) {
+
+                    return reject({message: "Login Error."});
                 }
 
-                //user successfully found .so now lets create token for user.
+                // user login successful let creat new token save to token collection.
 
-                const userId = _.get(result,'_id');
-                this.app.models.token.create(userId).then((token)=>{
+                const userId = result._id;
+
+                this.app.models.token.create(userId).then((token) => {
 
                     token.user = result;
+
                     return resolve(token);
 
-                }).catch((err) =>{
+                }).catch(err => {
 
-                    return reject({message:"Login error"});
+                    return reject({message: "Login error"});
                 })
 
-                //return resolve(result);
-            })
+
+            });
+
 
         })
+
+
     }
 
-    findUserByEmail(email,callback = () =>{}){
+    findUserByEmail(email, callback = () => {
+    }) {
 
-        const dbo = this.app.db.db("chatapp");
 
-        dbo.collection('users').findOne({email:email},(err,result)=>{
+        this.app.db.collection('users').findOne({email: email}, (err, result) => {
 
-            if(err || !result){
-                return callback({message:"UserNot Found"});
+            if (err || !result) {
+
+                return callback({message: "User not found."})
             }
 
-            return callback(null,result);
-        })
+            return callback(null, result);
+
+        });
+
+
     }
 
-    load(id){
+    load(id) {
 
-        return new Promise((resolve,reject) =>{
 
-            //first check if it is present in cache or not
+        id = `${id}`;
+
+        return new Promise((resolve, reject) => {
+
+            // find in cache if found we return and dont nee to query db
 
             const userInCache = this.users.get(id);
-            if(userInCache){
 
+
+            if (userInCache) {
                 return resolve(userInCache);
             }
 
-            //if not found in cache begin query in database
-            this.findUserById(id,(err,user) =>{
+            // if not found then we start query db
+            this.findUserById(id, (err, user) => {
 
-                if(!err && user){
-                    this.users = this.users.set(id,user);
+                if (!err && user) {
+
+
+                    this.users = this.users.set(id, user);
                 }
 
-                return err? reject(err):resolve(user);
+                return err ? reject(err) : resolve(user);
+
             })
+
 
         })
     }
 
-    findUserById(id,callback=() =>{}){
+    findUserById(id, callback = () => {
+    }) {
 
-       // console.log("Begin Query in Database");
+        //console.log("Begin query in database");
 
-        if(!id){
-            return callback({message:"User not found"},null);
+        if (!id) {
+            return callback({message: "User not found"}, null);
         }
+
 
         const userId = new ObjectID(id);
 
-        const dbo = this.app.db.db("chatapp");
+        this.app.db.collection('users').findOne({_id: userId}, (err, result) => {
 
-        dbo.collection('users').findOne({_id:userId},(err,result)=>{
 
-            if(err || !result){
-                    return callback({message:"user not found"},null);
+            if (err || !result) {
+
+                return callback({message: "User not found"});
             }
+            return callback(null, result);
 
-            return callback(null,result);
-        })
-
+        });
     }
 
-    beforeSave(user, callback = (err,user) =>{}){
+    beforeSave(user, callback = () => {
+    }) {
 
-        //first validate user before saving to collection.
+
+        // first is validate user object before save to user collection.
 
         let errors = [];
-        const fields = ['name','email','password'];
+
+
+        const fields = ['name', 'email', 'password'];
         const validations = {
             name: {
-                errorMessage: 'Name is Required',
-                do : () => {
+                errorMesage: 'Name is required',
+                do: () => {
 
-                    const name = _.get(user,'name','');
+                    const name = _.get(user, 'name', '');
 
                     return name.length;
                 }
             },
-            email:{
-                errorMessage: 'Email is not correct',
-                do : () =>{
+            email: {
+                errorMesage: 'Email is not correct',
+                do: () => {
 
-                    const email = _.get(user,'email','');
+                    const email = _.get(user, 'email', '');
 
-                    if(email.length && isEmail(email)){
-                        return true;
+                    if (!email.length || !isEmail(email)) {
+                        return false;
                     }
-                    return false;
+
+
+                    return true;
                 }
             },
-            password:{
-                errorMessage: 'Password is required and its length should be more then three characters',
-                do : () =>{
+            password: {
+                errorMesage: 'Password is required and more than 3 characters',
+                do: () => {
+                    const password = _.get(user, 'password', '');
 
-                    const password = _.get(user,'password','');
+                    if (!password.length || password.length < 3) {
 
-                    if(password.length && password.length>3){
-                        return true;
+                        return false;
                     }
-                    return false;
+
+                    return true;
                 }
             }
         }
 
-        //feild validation
-        fields.forEach((feild) =>{
 
-            const feildvalidation = _.get(validations,feild);
-            
+        // loop all fields to check if valid or not.
+        fields.forEach((field) => {
 
-                if(feildvalidation){
 
-                    const isValid = feildvalidation.do();
-                    const msg = feildvalidation.errorMessage;
+            const fieldValidation = _.get(validations, field);
 
-                    if(!isValid){
-                        errors.push(msg);
-                    }
+            if (fieldValidation) {
 
-                }       
-            
-        })
+                // do check/
 
-        if(errors.length){
+                const isValid = fieldValidation.do();
+                const msg = fieldValidation.errorMesage;
 
-            const err = _.join(errors,',');
-            return callback(err,null);
+                if (!isValid) {
+                    errors.push(msg);
+                }
+            }
+
+
+        });
+
+        if (errors.length) {
+
+            // this is not pass of the validation.
+            const err = _.join(errors, ',');
+            return callback(err, null);
         }
 
-        const email = _.toLower(_.trim(_.get(user,'email','')));
+        // check email is exist in db or not
+        const email = _.toLower(_.trim(_.get(user, 'email', '')));
 
-        const dbo = this.app.db.db("chatapp");
+        this.app.db.collection('users').findOne({email: email}, (err, result) => {
 
-        dbo.collection('users').findOne({email:email},(err,result)=>{
-
-            if(err || result){
-                return callback({message:"Email Already Exist"},null);
+            if (err || result) {
+                return callback({message: "Email is already exist"}, null);
             }
 
 
-            //successful return
+            // return callback with succes checked.
+            const password = _.get(user, 'password');
+            const hashPassword = bcrypt.hashSync(password, saltRound);
 
-            const password = _.get(user,'password');
-            const hashpassword = bcrypt.hashSync(password,saltRounds);
+            const userFormatted = {
+                name: `${_.trim(_.get(user, 'name'))}`,
+                email: email,
+                password: hashPassword,
+                created: new Date(),
+            };
 
-            const userformatted ={
-                name:`${_.trim(_.get(user,'name'))}`,
-                email:email,
-                password:hashpassword,
-                created:new Date()
-            }
 
-            return callback(null,userformatted);
-        })
+            return callback(null, userFormatted);
+
+
+        });
+
 
     }
 
-
-    create(user){
+    create(user) {
 
         const db = this.app.db;
 
-        console.log('User: ',user);
+        console.log("User:", user)
 
-        return new Promise((resolve,reject) =>{
+        return new Promise((resolve, reject) => {
 
-            this.beforeSave(user, (err, user) =>{
 
-                console.log("After validation: ",err,user);
+            this.beforeSave(user, (err, user) => {
 
-                if(err){
+
+                console.log("After validation: ", err, user);
+
+
+                if (err) {
                     return reject(err);
                 }
 
-                const dbo = db.db("chatapp");
 
-                dbo.collection('users').insertOne(user,(err,info) =>{
-    
-                    //check if error return error to user
-                        if(err){
-                            return reject({message: "An error saving user"});
-                        }
+                // insert new user object to users collections
 
-                    //otherwise return user object to user.
+                db.collection('users').insertOne(user, (err, info) => {
 
-                        const userId = _.get(user,'_id').toString(); //this is OBJECTID
 
-                        this.users = this.users.set(userId,user);
+                    // check if error return error to user
+                    if (err) {
+                        return reject({message: "An error saving user."});
+                    }
 
-                        return resolve(user);
+                    // otherwise return user object to user.
+
+                    const userId = _.get(user, '_id').toString(); // this is OBJET ID
+
+
+                    this.users = this.users.set(userId, user);
+
+                    return resolve(user);
+
                 });
 
-                
             });
 
-             
-        });
 
-    
+        });
     }
 }
