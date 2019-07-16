@@ -46,9 +46,9 @@ new Database().connect().then((db) => {
 	app.db = db;
 	
 }).catch((err) => {
+	console.log("Error 1 occured");
 
-
-	throw(err);
+	// throw(err);
 });
 
 
